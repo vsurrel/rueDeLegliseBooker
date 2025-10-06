@@ -12,6 +12,11 @@
 <body>
     <header class="legend">
         <div class="legend-title">{{ .BannerTitle }}</div>
+        <div class="legend-actions">
+            <a class="calendar-link" href="{{ if .BasePath }}{{ .BasePath }}{{ end }}/cal.ics" title="Exporter au format iCal" aria-label="Exporter au format iCal">
+                <span class="calendar-link-label">ICS</span>
+            </a>
+        </div>
         <div id="legend-entries" class="legend-entries"></div>
     </header>
     <main>
