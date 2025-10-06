@@ -1,0 +1,71 @@
+{{- /*
+  Template principal pour l'application de reservation.
+*/ -}}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .PageTitle }}</title>
+    <link rel="stylesheet" href="{{ if .BasePath }}{{ .BasePath }}{{ end }}/static/css/styles.css">
+</head>
+<body>
+    <header class="legend">
+        <div class="legend-title">{{ .BannerTitle }}</div>
+        <div id="legend-entries" class="legend-entries"></div>
+    </header>
+    <main>
+        <div id="calendar" class="calendar"></div>
+    </main>
+
+    <div id="create-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Nouvelle reservation</h2>
+            <p id="create-range" class="modal-range"></p>
+            <label for="person-select" class="modal-label">Qui sera present ?</label>
+            <select id="person-select" class="modal-select"></select>
+            <label for="create-comment" class="modal-label">Commentaire (optionnel)</label>
+            <textarea id="create-comment" class="modal-textarea" placeholder="Precisions sur la reservation"></textarea>
+            <div class="modal-actions">
+                <button type="button" id="create-cancel" class="button secondary">Annuler</button>
+                <button type="button" id="create-confirm" class="button primary">Valider</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Supprimer la reservation</h2>
+            <p id="delete-description" class="modal-range"></p>
+            <label for="delete-comment" class="modal-label">Commentaire</label>
+            <textarea id="delete-comment" class="modal-textarea" placeholder="Precisions sur la reservation"></textarea>
+            <div class="modal-actions">
+                <button type="button" id="delete-save" class="button primary">Enregistrer</button>
+                <button type="button" id="delete-cancel" class="button secondary">Annuler</button>
+                <button type="button" id="delete-confirm" class="button danger">Supprimer...</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Confirmation</h2>
+            <p id="confirm-message" class="modal-range"></p>
+            <div class="modal-actions modal-actions-stacked">
+                <button type="button" id="confirm-back" class="button primary button-large">Retour</button>
+                <button type="button" id="confirm-delete" class="button danger button-small">Oui, supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+        window.APP_CONFIG = {
+            people: {{ .PeopleJSON }},
+            basePath: "{{ .BasePath }}"
+        };
+    </script>
+    <script src="{{ if .BasePath }}{{ .BasePath }}{{ end }}/static/js/app.js" defer></script>
+</body>
+</html>
