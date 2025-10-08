@@ -58,7 +58,7 @@ func main() {
 
 func assignColours(names []string) []server.Person {
 	palette := []string{
-		"#e6194b",
+		"#800000",
 		"#3cb44b",
 		"#ffe119",
 		"#0082c8",
@@ -72,7 +72,6 @@ func assignColours(names []string) []server.Person {
 		"#e6beff",
 		"#aa6e28",
 		"#fffac8",
-		"#800000",
 		"#aaffc3",
 		"#808000",
 		"#ffd8b1",
