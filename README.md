@@ -36,6 +36,19 @@ sudo -u valentin systemctl --user enable --now rueDeLegliseBooker.service
 
 Le service démarrera désormais automatiquement après un redémarrage du serveur, même sans session utilisateur ouverte.
 
+## Authentification
+
+L’application affiche désormais un écran plein écran demandant un mot de passe avant de charger le planning. Le mot de passe et son indice sont stockés dans `auth.json` (à la racine du projet). Mettez à jour ce fichier avec vos valeurs :
+
+```json
+{
+  "password": "votre-mot-de-passe",
+  "hint": "indice a personnaliser"
+}
+```
+
+Toute personne accédant au site doit saisir ce mot de passe (le lien de téléchargement ICS reste accessible sans authentification).
+
 ## Reverse proxy nginx
 
 Ajoutez le bloc suivant dans votre configuration nginx pour exposer l’application (chemin `/paris`) vers le backend en écoute sur `http://localhost:64512` :

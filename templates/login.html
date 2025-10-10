@@ -1,0 +1,150 @@
+{{- /*
+  Page d'authentification simple avant de charger l'application.
+*/ -}}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .PageTitle }}</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e88e5 0%, #3949ab 100%);
+            color: #222;
+        }
+        .card {
+            width: min(360px, 92vw);
+            padding: 2.5rem 2rem;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.20);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        h1 {
+            margin: 0;
+            text-align: center;
+            font-size: 1.6rem;
+            color: #1a237e;
+        }
+        label {
+            font-weight: 600;
+            color: #1a237e;
+        }
+        .input {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        input[type="password"] {
+            appearance: none;
+            border: 1px solid #c5cae9;
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        input[type="password"]:focus {
+            border-color: #3949ab;
+            box-shadow: 0 0 0 3px rgba(57, 73, 171, 0.25);
+        }
+        .hint {
+            font-size: 0.9rem;
+            color: #3949ab;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        button {
+            appearance: none;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #3949ab, #1a237e);
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(26, 35, 126, 0.25);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .error {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            background: rgba(229, 57, 53, 0.12);
+            border: 1px solid rgba(229, 57, 53, 0.35);
+            color: #b71c1c;
+            font-size: 0.95rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                color: #f5f5f5;
+            }
+            .card {
+                background: rgba(13, 19, 43, 0.85);
+                box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+            }
+            h1 {
+                color: #e8eaf6;
+            }
+            label {
+                color: #c5cae9;
+            }
+            input[type="password"] {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(197, 202, 233, 0.35);
+                color: #f5f5f5;
+            }
+            .hint {
+                color: #9fa8da;
+            }
+            .error {
+                background: rgba(229, 57, 53, 0.30);
+                border-color: rgba(229, 57, 53, 0.55);
+                color: #ffebee;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>{{ .PageTitle }}</h1>
+        {{- if .Error }}
+        <div class="error" role="alert">{{ .Error }}</div>
+        {{- end }}
+        <form method="post" action="{{ if .BasePath }}{{ .BasePath }}{{ end }}/login" class="input">
+            <label for="password">Mot de passe</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Entrez le mot de passe">
+            {{- if .Hint }}
+            <div class="hint">Indice : {{ .Hint }}</div>
+            {{- end }}
+            <div class="actions">
+                <button type="submit">Acceder</button>
+            </div>
+        </form>
+    </main>
+</body>
+</html>
