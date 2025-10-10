@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"rueDeLegliseBooker/internal/server"
-	"rueDeLegliseBooker/internal/storage"
+	"AppartmentBooker/internal/server"
+	"AppartmentBooker/internal/storage"
 )
 
 //go:embed templates/*.html
@@ -25,6 +25,7 @@ var staticFS embed.FS
 func main() {
 	cfg := loadConfig("config.json")
 	people := assignColours(cfg.People)
+	authCfg := loadAuthConfig("auth.json")
 
 	if err := os.MkdirAll("data", 0o755); err != nil {
 		log.Fatalf("unable to ensure data directory: %v", err)
@@ -36,7 +37,7 @@ func main() {
 	}
 	defer store.Close()
 
-	tpl, err := template.ParseFS(templateFS, "templates/index.html")
+	tpl, err := template.ParseFS(templateFS, "templates/*.html")
 	if err != nil {
 		log.Fatalf("failed to parse templates: %v", err)
 	}
@@ -47,7 +48,7 @@ func main() {
 	}
 	staticHandler := http.StripPrefix("/static/", http.FileServer(http.FS(staticContent)))
 
-	srv := server.New(store, tpl, staticHandler, people, cfg.PageTitle, cfg.BannerTitle, cfg.BasePath)
+	srv := server.New(store, tpl, staticHandler, people, cfg.PageTitle, cfg.BannerTitle, cfg.BasePath, authCfg.Password, authCfg.Hint)
 
 	addr := ":64512"
 	log.Printf("Service lance sur http://localhost%s", addr)
@@ -58,7 +59,7 @@ func main() {
 
 func assignColours(names []string) []server.Person {
 	palette := []string{
-		"#e6194b",
+		"#800000",
 		"#3cb44b",
 		"#ffe119",
 		"#0082c8",
@@ -72,7 +73,6 @@ func assignColours(names []string) []server.Person {
 		"#e6beff",
 		"#aa6e28",
 		"#fffac8",
-		"#800000",
 		"#aaffc3",
 		"#808000",
 		"#ffd8b1",
@@ -102,6 +102,11 @@ type appConfig struct {
 	BasePath    string   `json:"base_path"`
 }
 
+type authConfig struct {
+	Password string `json:"password"`
+	Hint     string `json:"hint"`
+}
+
 func loadConfig(path string) appConfig {
 	cfg := defaultConfig()
 
@@ -120,6 +125,29 @@ func loadConfig(path string) appConfig {
 
 	applyConfigDefaults(&cfg)
 	cfg.BasePath = sanitiseBasePath(cfg.BasePath)
+	return cfg
+}
+
+func loadAuthConfig(path string) authConfig {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			log.Fatalf("auth configuration %q introuvable", path)
+		}
+		log.Fatalf("lecture de la configuration auth %q impossible: %v", path, err)
+	}
+
+	var cfg authConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		log.Fatalf("analyse de la configuration auth %q impossible: %v", path, err)
+	}
+
+	cfg.Password = strings.TrimSpace(cfg.Password)
+	cfg.Hint = strings.TrimSpace(cfg.Hint)
+	if cfg.Password == "" {
+		log.Fatalf("la configuration auth %q doit contenir un mot de passe non vide", path)
+	}
+
 	return cfg
 }
 

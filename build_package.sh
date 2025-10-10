@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 BUILD_DIR="$ROOT_DIR/build"
 DIST_DIR="$ROOT_DIR/dist"
-BINARY_NAME="rueDeLegliseBooker"
+BINARY_NAME="AppartmentBooker"
 ARCHIVE_NAME="${BINARY_NAME}.tgz"
 
 rm -rf "$BUILD_DIR" "$DIST_DIR"

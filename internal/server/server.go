@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"rueDeLegliseBooker/internal/storage"
+	"AppartmentBooker/internal/storage"
 )
 
 // Person identifies a resident and its associated colour.
@@ -22,43 +23,82 @@ type Person struct {
 
 // Server wires HTTP handlers against the storage backend.
 type Server struct {
-	store       *storage.Store
-	template    *template.Template
-	static      http.Handler
-	people      []Person
-	pageTitle   string
-	bannerTitle string
-	basePath    string
+	store        *storage.Store
+	template     *template.Template
+	static       http.Handler
+	people       []Person
+	pageTitle    string
+	bannerTitle  string
+	basePath     string
+	password     string
+	passwordHint string
+	sessions     *sessionManager
 }
 
+const (
+	sessionCookieName = "rue_session"
+	sessionLifetime   = 24 * time.Hour
+)
+
 // New builds a server around the provided dependencies.
-func New(store *storage.Store, tpl *template.Template, static http.Handler, people []Person, pageTitle, bannerTitle, basePath string) *Server {
+func New(store *storage.Store, tpl *template.Template, static http.Handler, people []Person, pageTitle, bannerTitle, basePath, password, passwordHint string) *Server {
 	return &Server{
-		store:       store,
-		template:    tpl,
-		static:      static,
-		people:      append([]Person(nil), people...),
-		pageTitle:   pageTitle,
-		bannerTitle: bannerTitle,
-		basePath:    basePath,
+		store:        store,
+		template:     tpl,
+		static:       static,
+		people:       append([]Person(nil), people...),
+		pageTitle:    pageTitle,
+		bannerTitle:  bannerTitle,
+		basePath:     basePath,
+		password:     password,
+		passwordHint: passwordHint,
+		sessions:     newSessionManager(sessionLifetime),
 	}
 }
 
 // Routes exposes the configured HTTP routes.
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/static/", s.static)
+	mux.Handle("/static/", s.protectHandler(s.static))
 	mux.HandleFunc("/", s.handleIndex)
+	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/api/reservations", s.handleReservations)
 	mux.HandleFunc("/api/reservations/", s.handleReservation)
 	mux.HandleFunc("/api/people", s.handlePeople)
 	mux.HandleFunc("/cal.ics", s.handleCalendar)
-	return mux
+	if s.basePath == "" {
+		return mux
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.hasBasePathPrefix(r.URL.Path) {
+			mux.ServeHTTP(w, r)
+			return
+		}
+
+		trimmedPath := s.stripBasePath(r.URL.Path)
+		trimmedRawPath := ""
+		if raw := r.URL.RawPath; raw != "" {
+			trimmedRawPath = s.stripBasePath(raw)
+		}
+
+		clone := r.Clone(r.Context())
+		urlCopy := *r.URL
+		urlCopy.Path = trimmedPath
+		urlCopy.RawPath = trimmedRawPath
+		clone.URL = &urlCopy
+		mux.ServeHTTP(w, clone)
+	})
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
+		return
+	}
+
+	if !s.isAuthenticated(r) {
+		s.renderLogin(w, http.StatusOK, "")
 		return
 	}
 
@@ -85,7 +125,53 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if s.isAuthenticated(r) {
+			http.Redirect(w, r, s.rootPath(), http.StatusSeeOther)
+			return
+		}
+		s.renderLogin(w, http.StatusOK, "")
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form data", http.StatusBadRequest)
+			return
+		}
+
+		password := strings.TrimSpace(r.PostFormValue("password"))
+		if password != s.password {
+			s.renderLogin(w, http.StatusUnauthorized, "Mot de passe incorrect.")
+			return
+		}
+
+		token, err := s.sessions.Create()
+		if err != nil {
+			http.Error(w, "failed to create session", http.StatusInternalServerError)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     sessionCookieName,
+			Value:    token,
+			Path:     "/",
+			Expires:  time.Now().Add(sessionLifetime),
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+
+		http.Redirect(w, r, s.rootPath(), http.StatusSeeOther)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func (s *Server) handleReservations(w http.ResponseWriter, r *http.Request) {
+	if !s.isAuthenticated(r) {
+		s.writeUnauthorized(w)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		s.listReservations(w, r)
@@ -99,6 +185,11 @@ func (s *Server) handleReservations(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleReservation(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/api/reservations/") {
 		http.NotFound(w, r)
+		return
+	}
+
+	if !s.isAuthenticated(r) {
+		s.writeUnauthorized(w)
 		return
 	}
 
@@ -124,6 +215,11 @@ func (s *Server) handleReservation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePeople(w http.ResponseWriter, r *http.Request) {
+	if !s.isAuthenticated(r) {
+		s.writeUnauthorized(w)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -149,7 +245,7 @@ func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
 
 	builder.WriteString("BEGIN:VCALENDAR\r\n")
 	builder.WriteString("VERSION:2.0\r\n")
-	builder.WriteString("PRODID:-//rueDeLegliseBooker//FR\r\n")
+	builder.WriteString("PRODID:-//AppartmentBooker//FR\r\n")
 	builder.WriteString("CALSCALE:GREGORIAN\r\n")
 	builder.WriteString("METHOD:PUBLISH\r\n")
 
@@ -169,7 +265,7 @@ func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
 
 		builder.WriteString("BEGIN:VEVENT\r\n")
 		builder.WriteString("UID:")
-		builder.WriteString(fmt.Sprintf("%d@rueDeLegliseBooker\r\n", res.ID))
+		builder.WriteString(fmt.Sprintf("%d@AppartmentBooker\r\n", res.ID))
 		builder.WriteString("DTSTAMP:")
 		builder.WriteString(dtStamp)
 		builder.WriteString("\r\n")
@@ -306,6 +402,11 @@ func (s *Server) updateReservationComment(w http.ResponseWriter, r *http.Request
 		Comment string `json:"comment"`
 	}
 
+	if !s.isAuthenticated(r) {
+		s.writeUnauthorized(w)
+		return
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
@@ -337,4 +438,84 @@ func escapeICS(value string) string {
 	escaped = strings.ReplaceAll(escaped, ",", "\\,")
 	escaped = strings.ReplaceAll(escaped, ";", "\\;")
 	return escaped
+}
+
+func (s *Server) isAuthenticated(r *http.Request) bool {
+	if s.password == "" {
+		return true
+	}
+
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return false
+	}
+	return s.sessions.Validate(cookie.Value)
+}
+
+func (s *Server) renderLogin(w http.ResponseWriter, status int, errorMessage string) {
+	data := struct {
+		BasePath  string
+		Hint      string
+		Error     string
+		PageTitle string
+	}{
+		BasePath:  s.basePath,
+		Hint:      s.passwordHint,
+		Error:     errorMessage,
+		PageTitle: s.pageTitle,
+	}
+
+	var buf bytes.Buffer
+	if err := s.template.ExecuteTemplate(&buf, "login.html", data); err != nil {
+		http.Error(w, "template rendering failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write(buf.Bytes())
+}
+
+func (s *Server) writeUnauthorized(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+}
+
+func (s *Server) rootPath() string {
+	if s.basePath == "" {
+		return "/"
+	}
+	return s.basePath
+}
+
+func (s *Server) protectHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.isAuthenticated(r) {
+			http.Redirect(w, r, s.rootPath(), http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) hasBasePathPrefix(path string) bool {
+	if s.basePath == "" {
+		return false
+	}
+	if path == s.basePath {
+		return true
+	}
+	return strings.HasPrefix(path, s.basePath+"/")
+}
+
+func (s *Server) stripBasePath(path string) string {
+	trimmed := strings.TrimPrefix(path, s.basePath)
+	if trimmed == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(trimmed, "/") {
+		return "/" + trimmed
+	}
+	return trimmed
 }
