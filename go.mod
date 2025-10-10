@@ -1,4 +1,4 @@
-module rueDeLegliseBooker
+module AppartmentBooker
 
 go 1.24.7
 

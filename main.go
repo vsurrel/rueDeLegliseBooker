@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"rueDeLegliseBooker/internal/server"
-	"rueDeLegliseBooker/internal/storage"
+	"AppartmentBooker/internal/server"
+	"AppartmentBooker/internal/storage"
 )
 
 //go:embed templates/*.html

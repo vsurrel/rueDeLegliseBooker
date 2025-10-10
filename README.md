@@ -2,19 +2,19 @@
 
 ## Démarrage via systemd (service utilisateur)
 
-Voici un exemple d’unité `systemd` pour exécuter l’application située dans `/home/valentin/rueDeLegliseBooker` sous l’utilisateur `valentin`. Le service redémarre automatiquement en cas d’arrêt inattendu (délai de 10 s).
+Voici un exemple d’unité `systemd` pour exécuter l’application située dans `/home/valentin/AppartmentBooker` sous l’utilisateur `valentin`. Le service redémarre automatiquement en cas d’arrêt inattendu (délai de 10 s).
 
-Fichier `~/.config/systemd/user/rueDeLegliseBooker.service` :
+Fichier `~/.config/systemd/user/AppartmentBooker.service` :
 
 ```ini
 [Unit]
-Description=Planning de reservation - rueDeLegliseBooker
+Description=Planning de reservation - AppartmentBooker
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/valentin/rueDeLegliseBooker
-ExecStart=/home/valentin/rueDeLegliseBooker/rueDeLegliseBooker
+WorkingDirectory=/home/valentin/AppartmentBooker
+ExecStart=/home/valentin/AppartmentBooker/AppartmentBooker
 Restart=always
 RestartSec=10
 Environment=PORT=64512
@@ -31,7 +31,7 @@ loginctl enable-linger valentin
 
 # Recharger les unités utilisateur et activer le service
 sudo -u valentin systemctl --user daemon-reload
-sudo -u valentin systemctl --user enable --now rueDeLegliseBooker.service
+sudo -u valentin systemctl --user enable --now AppartmentBooker.service
 ```
 
 Le service démarrera désormais automatiquement après un redémarrage du serveur, même sans session utilisateur ouverte.

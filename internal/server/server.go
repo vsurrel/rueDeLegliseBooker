@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"rueDeLegliseBooker/internal/storage"
+	"AppartmentBooker/internal/storage"
 )
 
 // Person identifies a resident and its associated colour.
@@ -245,7 +245,7 @@ func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
 
 	builder.WriteString("BEGIN:VCALENDAR\r\n")
 	builder.WriteString("VERSION:2.0\r\n")
-	builder.WriteString("PRODID:-//rueDeLegliseBooker//FR\r\n")
+	builder.WriteString("PRODID:-//AppartmentBooker//FR\r\n")
 	builder.WriteString("CALSCALE:GREGORIAN\r\n")
 	builder.WriteString("METHOD:PUBLISH\r\n")
 
@@ -265,7 +265,7 @@ func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
 
 		builder.WriteString("BEGIN:VEVENT\r\n")
 		builder.WriteString("UID:")
-		builder.WriteString(fmt.Sprintf("%d@rueDeLegliseBooker\r\n", res.ID))
+		builder.WriteString(fmt.Sprintf("%d@AppartmentBooker\r\n", res.ID))
 		builder.WriteString("DTSTAMP:")
 		builder.WriteString(dtStamp)
 		builder.WriteString("\r\n")
